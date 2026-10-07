@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
+<stock_availables>
+  <stock_available>
+    <id><![CDATA[34]]></id>
+    <id_product><![CDATA[12]]></id_product>
+    <quantity><![CDATA[10]]></quantity>
+  </stock_available>
+  <stock_available>
+    <id><![CDATA[35]]></id>
+    <id_product><![CDATA[12]]></id_product>
+    <quantity><![CDATA[10]]></quantity>
+  </stock_available>
+</stock_availables>
+</prestashop>

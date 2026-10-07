@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
+<errors>
+  <error>
+    <code><![CDATA[1]]></code>
+    <message><![CDATA[Resource of type "stock_availables" does not exist with the specified filters]]></message>
+  </error>
+</errors>
+</prestashop>

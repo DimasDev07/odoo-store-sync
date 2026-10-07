@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
+<products>
+  <product>
+    <id><![CDATA[12]]></id>
+    <reference><![CDATA[DESK-001]]></reference>
+  </product>
+  <product>
+    <id><![CDATA[31]]></id>
+    <reference><![CDATA[DESK-001]]></reference>
+  </product>
+</products>
+</prestashop>
