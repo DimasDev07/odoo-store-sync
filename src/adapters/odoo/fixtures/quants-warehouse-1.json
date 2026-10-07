@@ -1,0 +1,10 @@
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "result": [
+    { "id": 101, "product_id": [12, "[DESK-001] Standing desk"], "quantity": 10.0, "write_date": "2026-10-01 08:15:22" },
+    { "id": 102, "product_id": [12, "[DESK-001] Standing desk"], "quantity": 4.0, "write_date": "2026-10-05 16:30:00" },
+    { "id": 103, "product_id": [13, "[CHAIR-002] Office chair"], "quantity": 5.0, "write_date": "2026-10-02 09:00:10" },
+    { "id": 104, "product_id": [99, "Archived product"], "quantity": 1.0, "write_date": "2026-08-01 09:00:00" }
+  ]
+}

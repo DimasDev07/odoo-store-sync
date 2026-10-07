@@ -1,0 +1,15 @@
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "error": {
+    "code": 200,
+    "message": "Odoo Server Error",
+    "data": {
+      "name": "odoo.exceptions.AccessDenied",
+      "debug": "Traceback (most recent call last):\n  File \"/usr/lib/python3/dist-packages/odoo/http.py\", line 2191, in _transactioning\n    return service_model.retrying(func, env=self.env)\nodoo.exceptions.AccessDenied: Access Denied\n",
+      "message": "Access Denied",
+      "arguments": ["Access Denied"],
+      "context": {}
+    }
+  }
+}

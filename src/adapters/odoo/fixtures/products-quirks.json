@@ -1,0 +1,9 @@
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "result": [
+    { "id": 20, "default_code": "   ", "qty_available": 4.0, "write_date": "2026-10-01 08:00:00" },
+    { "id": 21, "default_code": " FRAC-005 ", "qty_available": 3.7, "write_date": "2026-10-01 08:00:00" },
+    { "id": 22, "default_code": "NO-VERSION-006", "qty_available": 1.0, "write_date": false }
+  ]
+}

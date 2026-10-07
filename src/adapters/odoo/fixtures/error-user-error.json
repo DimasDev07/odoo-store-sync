@@ -1,0 +1,15 @@
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "error": {
+    "code": 200,
+    "message": "Odoo Server Error",
+    "data": {
+      "name": "odoo.exceptions.ValidationError",
+      "debug": "Traceback (most recent call last):\nodoo.exceptions.ValidationError: Invalid field 'qty_on_hand' on model 'product.product'\n",
+      "message": "Invalid field 'qty_on_hand' on model 'product.product'",
+      "arguments": ["Invalid field 'qty_on_hand' on model 'product.product'"],
+      "context": {}
+    }
+  }
+}

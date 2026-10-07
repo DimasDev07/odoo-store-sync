@@ -1,0 +1,7 @@
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "result": [
+    { "id": 12, "default_code": "DESK-001", "qty_available": "fourteen", "write_date": "2026-10-01 08:15:22" }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "error": {
+    "code": 200,
+    "message": "Odoo Server Error",
+    "data": {
+      "name": "psycopg2.errors.OperationalError",
+      "debug": "Traceback (most recent call last):\npsycopg2.OperationalError: could not obtain lock on row\n",
+      "message": "could not obtain lock on row",
+      "arguments": ["could not obtain lock on row"],
+      "context": {}
+    }
+  }
+}

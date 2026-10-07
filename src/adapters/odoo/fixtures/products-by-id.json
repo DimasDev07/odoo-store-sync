@@ -1,0 +1,8 @@
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "result": [
+    { "id": 12, "default_code": "DESK-001" },
+    { "id": 13, "default_code": "CHAIR-002" }
+  ]
+}
