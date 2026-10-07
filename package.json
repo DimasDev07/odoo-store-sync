@@ -16,8 +16,8 @@
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
-    "dev": "tsx --env-file-if-exists=.env src/main.ts",
-    "sync:stock": "tsx --env-file-if-exists=.env src/main.ts"
+    "dev": "tsx src/main.ts",
+    "sync:stock": "tsx src/main.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
