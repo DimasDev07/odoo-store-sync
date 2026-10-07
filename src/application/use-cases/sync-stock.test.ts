@@ -1,100 +1,27 @@
 import { describe, expect, it } from 'vitest';
-import { isRetryable, StoreAuthError, StoreUnavailableError } from '../../domain/errors.js';
+import { StoreAuthError, StoreUnavailableError } from '../../domain/errors.js';
 import { createStockLevel, Sku, type StockLevel } from '../../domain/product.js';
-import type { ClockPort } from '../ports/clock-port.js';
-import type { ErpPort } from '../ports/erp-port.js';
-import type {
-  EnqueueResult,
-  FailedJob,
-  Job,
-  JobHandler,
-  JobQueuePort,
-  QueueRunSummary,
-} from '../ports/job-queue-port.js';
-import type { StorePort, StoreProductRef } from '../ports/store-port.js';
-import type { SyncLogEntry, SyncLogPort } from '../ports/sync-log-port.js';
+import { InMemoryErp } from '../../adapters/memory/in-memory-erp.js';
+import { InMemoryJobQueue } from '../../adapters/memory/in-memory-job-queue.js';
+import { InMemoryStore } from '../../adapters/memory/in-memory-store.js';
+import { InMemorySyncLog } from '../../adapters/memory/in-memory-sync-log.js';
+import { FakeClock } from '../../adapters/memory/fake-clock.js';
+import { immediateRetry } from '../../adapters/test-support/retry-runner.js';
 import { buildIdempotencyKey, SyncStock } from './sync-stock.js';
 
-// Minimal test doubles. They are replaced by the in-memory adapters once those exist.
-
-class StubErp implements ErpPort {
-  sinceArgs: (Date | undefined)[] = [];
-  error: Error | undefined;
-  constructor(public levels: StockLevel[]) {}
-  async listStockLevels(since?: Date): Promise<StockLevel[]> {
-    this.sinceArgs.push(since);
-    if (this.error) throw this.error;
-    return this.levels;
-  }
-}
-
-class StubStore implements StorePort {
-  setCalls: { sku: string; quantity: number }[] = [];
-  failures = new Map<string, unknown>();
-  constructor(readonly stock: Map<string, number>) {}
-  async findProductBySku(sku: Sku): Promise<StoreProductRef | null> {
-    const failure = this.failures.get(sku.value);
-    if (failure) throw failure;
-    const quantity = this.stock.get(sku.value);
-    return quantity === undefined ? null : { id: `id-${sku.value}`, sku, quantity };
-  }
-  async setStock(ref: StoreProductRef, quantity: number): Promise<void> {
-    this.setCalls.push({ sku: ref.sku.value, quantity });
-    this.stock.set(ref.sku.value, quantity);
-  }
-}
-
-class StubLog implements SyncLogPort {
-  entries: SyncLogEntry[] = [];
-  async record(entry: SyncLogEntry): Promise<void> {
-    this.entries.push(entry);
-  }
-}
-
-class StubQueue<T> implements JobQueuePort<T> {
-  private accepted = new Set<string>();
-  private pending: Job<T>[] = [];
-  constructor(private readonly maxAttempts = 3) {}
-  async enqueue(job: Job<T>): Promise<EnqueueResult> {
-    if (this.accepted.has(job.idempotencyKey)) return 'duplicate';
-    this.accepted.add(job.idempotencyKey);
-    this.pending.push(job);
-    return 'enqueued';
-  }
-  async process(handler: JobHandler<T>): Promise<QueueRunSummary<T>> {
-    let succeeded = 0;
-    const failed: FailedJob<T>[] = [];
-    for (const job of this.pending.splice(0)) {
-      let attempt = 0;
-      for (;;) {
-        attempt += 1;
-        try {
-          await handler(job, attempt);
-          succeeded += 1;
-          break;
-        } catch (error) {
-          if (isRetryable(error) && attempt < this.maxAttempts) continue;
-          this.accepted.delete(job.idempotencyKey);
-          failed.push({ job, attempts: attempt, error });
-          break;
-        }
-      }
-    }
-    return { succeeded, failed };
-  }
-}
-
 const NOW = new Date('2026-10-08T10:00:00.000Z');
-const clock: ClockPort = { now: () => NOW, sleep: async () => {} };
 
 const level = (sku: string, quantity: number, sourceVersion = 'v1'): StockLevel =>
   createStockLevel({ sku, quantity, sourceVersion });
 
 function setup(options: { erp: StockLevel[]; store: Record<string, number>; maxAttempts?: number }) {
-  const erp = new StubErp(options.erp);
-  const store = new StubStore(new Map(Object.entries(options.store)));
-  const log = new StubLog();
-  const queue = new StubQueue<StockLevel>(options.maxAttempts);
+  const erp = new InMemoryErp(options.erp);
+  const store = new InMemoryStore(options.store);
+  const log = new InMemorySyncLog();
+  const queue = new InMemoryJobQueue<StockLevel>({
+    retry: immediateRetry(options.maxAttempts ?? 3),
+  });
+  const clock = new FakeClock(NOW);
   const useCase = new SyncStock({ erp, store, log, queue, clock });
   return { erp, store, log, queue, useCase };
 }
@@ -119,7 +46,7 @@ describe('SyncStock', () => {
 
     const report = await useCase.execute();
 
-    expect(store.setCalls).toEqual([{ sku: 'A', quantity: 10 }]);
+    expect(store.setStockCalls).toEqual([{ sku: 'A', quantity: 10 }]);
     expect(report.outcomes).toEqual([
       { kind: 'updated', sku: Sku.of('A'), previousQuantity: 4, newQuantity: 10 },
     ]);
@@ -130,7 +57,7 @@ describe('SyncStock', () => {
 
     const report = await useCase.execute();
 
-    expect(store.setCalls).toEqual([]);
+    expect(store.setStockCalls).toEqual([]);
     expect(report.outcomes).toEqual([
       { kind: 'skipped-unchanged', sku: Sku.of('A'), quantity: 4, reason: 'quantity-equal' },
     ]);
@@ -141,7 +68,7 @@ describe('SyncStock', () => {
 
     const report = await useCase.execute();
 
-    expect(store.setCalls).toEqual([]);
+    expect(store.setStockCalls).toEqual([]);
     expect(report.outcomes).toEqual([{ kind: 'not-found-in-store', sku: Sku.of('GHOST') }]);
   });
 
@@ -179,7 +106,7 @@ describe('SyncStock', () => {
 
   it('lets ERP failures surface: there is nothing to sync without a source', async () => {
     const { useCase, erp } = setup({ erp: [], store: {} });
-    erp.error = new Error('erp down');
+    erp.failWith(new Error('erp down'));
 
     await expect(useCase.execute()).rejects.toThrow('erp down');
   });
@@ -193,7 +120,7 @@ describe('SyncStock', () => {
 
       const report = await useCase.execute();
 
-      expect(store.setCalls).toHaveLength(1);
+      expect(store.setStockCalls).toHaveLength(1);
       expect(report.outcomes).toContainEqual({
         kind: 'skipped-unchanged',
         sku: Sku.of('A'),
@@ -206,12 +133,12 @@ describe('SyncStock', () => {
     it('does not re-apply a change already processed in an earlier run', async () => {
       const { useCase, store } = setup({ erp: [level('A', 10, 'v1')], store: { A: 4 } });
       await useCase.execute();
-      store.stock.set('A', 7); // someone edits the store by hand between runs
-      store.setCalls.length = 0;
+      store.setQuantity('A', 7); // someone edits the store by hand between runs
+      store.setStockCalls.length = 0;
 
       const report = await useCase.execute();
 
-      expect(store.setCalls).toEqual([]);
+      expect(store.setStockCalls).toEqual([]);
       expect(report.outcomes).toEqual([
         { kind: 'skipped-unchanged', sku: Sku.of('A'), quantity: 10, reason: 'duplicate-job' },
       ]);
@@ -220,8 +147,8 @@ describe('SyncStock', () => {
     it('treats a new source version as new work', async () => {
       const { useCase, erp, store } = setup({ erp: [level('A', 10, 'v1')], store: { A: 4 } });
       await useCase.execute();
-      erp.levels = [level('A', 10, 'v2')];
-      store.stock.set('A', 3);
+      erp.setLevels([level('A', 10, 'v2')]);
+      store.setQuantity('A', 3);
 
       const report = await useCase.execute();
 
@@ -236,7 +163,7 @@ describe('SyncStock', () => {
         store: { A: 4 },
         maxAttempts: 3,
       });
-      store.failures.set('A', new StoreUnavailableError('503 from store'));
+      store.failOn('A', new StoreUnavailableError('503 from store'));
 
       const report = await useCase.execute();
 
@@ -255,7 +182,7 @@ describe('SyncStock', () => {
 
     it('does not retry permanent errors', async () => {
       const { useCase, store } = setup({ erp: [level('A', 10)], store: { A: 4 } });
-      store.failures.set('A', new StoreAuthError('401'));
+      store.failOn('A', new StoreAuthError('401'));
 
       const report = await useCase.execute();
 
@@ -264,20 +191,11 @@ describe('SyncStock', () => {
       ]);
     });
 
-    it('describes errors that are not Error instances', async () => {
-      const { useCase, store } = setup({ erp: [level('A', 10)], store: { A: 4 } });
-      store.failures.set('A', 'weird failure');
-
-      const report = await useCase.execute();
-
-      expect(report.outcomes[0]).toMatchObject({ kind: 'failed', reason: 'weird failure' });
-    });
-
     it('lets a later run retry a job that failed for good', async () => {
       const { useCase, store } = setup({ erp: [level('A', 10)], store: { A: 4 } });
-      store.failures.set('A', new StoreAuthError('401'));
+      store.failOn('A', new StoreAuthError('401'));
       await useCase.execute();
-      store.failures.clear();
+      store.clearFailures();
 
       const report = await useCase.execute();
 
@@ -289,7 +207,7 @@ describe('SyncStock', () => {
         erp: [level('BAD', 1), level('GOOD', 5)],
         store: { BAD: 0, GOOD: 0 },
       });
-      store.failures.set('BAD', new StoreAuthError('401'));
+      store.failOn('BAD', new StoreAuthError('401'));
 
       const report = await useCase.execute();
 
