@@ -101,7 +101,7 @@ Other scripts: `pnpm test:watch`, `pnpm test:coverage` (domain and application a
 | PrestaShop combinations and multistore | Planned |
 | WooCommerce and Shopify adapters | Planned |
 | Fiscal positions and recargo de equivalencia on imported orders | Planned |
-| Odoo 19+ support | Planned: the JSON-2 API replaces the legacy `/jsonrpc` endpoint used here |
+| Odoo 19+ support | Planned: Odoo 19 introduces the [External JSON-2 API](https://www.odoo.com/documentation/19.0/developer/reference/external_api.html) (`POST /json/2/<model>/<method>`, bearer API key). The `/xmlrpc`, `/xmlrpc/2` and `/jsonrpc` endpoints used here are deprecated and scheduled for removal in Odoo 22 (fall 2028) |
 
 ## Design notes
 
